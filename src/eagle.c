@@ -5,12 +5,29 @@
 #include <float.h>
 #include <ctype.h>
 #include <pthread.h>
+#include <libgen.h>
 #include "mem.h"
 #include "defs.h"
 #include "common.h"
 #include "context.h"
 
-#define PROFILE
+//#define PROFILE
+
+//////////////////////////////////////////////////////////////////////////////
+// - - - - - - - - - - - - - R E M O V E   E X T E N S I O N - - - - - - - - -
+char *RemoveExt(char* mystr) {
+    char *retstr;
+    char *lastdot;
+    if (mystr == NULL)
+         return NULL;
+    if ((retstr = malloc (strlen (mystr) + 1)) == NULL)
+        return NULL;
+    strcpy (retstr, basename(mystr));
+    lastdot = strrchr (retstr, '.');
+    if (lastdot != NULL)
+        *lastdot = '\0';
+    return retstr;
+}
 
 //////////////////////////////////////////////////////////////////////////////
 // - - - - - - - - - - - - - - - - W R I T E   W O R D - - - - - - - - - - - -
@@ -28,14 +45,14 @@ void RWord(FILE *F, uint8_t *b, int32_t i, uint32_t ctx){
 void Target(Param P, uint8_t id){
   FILE     *Reader = Fopen(P.tar[id], "r");
   char     *name1  = (char *) Calloc(1024, sizeof(char));
-                     sprintf(name1, "-k%u.eg", P.context);
-  char     *name2  = concatenate(P.tar[id], name1);
-  FILE     *Pos    = Fopen(name2, "w");
+                     sprintf(name1, "/%s_%s.raw.txt", RemoveExt(P.ref), RemoveExt(P.tar[id]));
+  char     *name2  = concatenate(dirname(P.tar[id]), name1);
+  FILE     *Pos    = Fopen(name2, "a");
   uint64_t nSymbols = NDNASyminFile(Reader), i = 0, raw = 0, unknown = 0;
   uint32_t n, k, idxPos, hIndex, header = 0;
   int32_t  idx = 0;
   uint8_t  *wBuf, *rBuf, *sBuf, sym, found = 0;
-
+  
   if(P.verbose)
     fprintf(stderr, "Searching target sequence %d ...\n", id + 1);
 
@@ -70,7 +87,7 @@ void Target(Param P, uint8_t id){
       if(i > P.M->ctx){  // SKIP INITIAL CONTEXT, ALL "AAA..."
         if(P.M->mode == 0){ // TABLE MODE
           if(!P.M->array.counters[P.M->idx]){ // NO MATCH!
-            fprintf(Pos, "%"PRIu64"\t", i-P.M->ctx);
+            //fprintf(Pos, "%"PRIu64"\t", i-P.M->ctx);
             RWord(Pos, sBuf, idx, P.M->ctx);
             #ifdef PROFILE
             fprintf(Profile, "2\n");
